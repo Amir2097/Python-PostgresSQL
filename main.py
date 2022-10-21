@@ -1,13 +1,15 @@
 import psycopg2
 
+def delete_db(cursor):
+    '''Удаление таблиц'''
+    cursor.execute("""
+           DROP TABLE phone;
+           DROP TABLE client;
+       """)
+    print('Таблицы успешно удалены')
+
 
 def create_db(cursor):
-    '''Первоначальное удаление таблиц'''
-    cursor.execute("""
-        DROP TABLE phone;
-        DROP TABLE client;
-    """)
-
     '''Создание таблиц'''
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS client(
@@ -25,7 +27,6 @@ def create_db(cursor):
         phone_number VARCHAR(64) NOT NULL
     );
     """)
-    conn.commit()
     print("Таблица успешно создана")
 
 
@@ -34,7 +35,6 @@ def add_client(cursor, first_name, last_name, email, phones=None):
     cursor.execute("""
         INSERT INTO client(first_name, last_name, email, phones) VALUES(%s, %s, %s, %s);
         """, (first_name, last_name, email, phones))
-    conn.commit()
     print("Новый клиент успешно добавлен")
 
 def add_phone(cursor, client_id, phone):
@@ -42,21 +42,42 @@ def add_phone(cursor, client_id, phone):
     cursor.execute("""
         INSERT INTO phone(client_id, phone_number) VALUES(%s, %s);
         """, (client_id, phone))
-    conn.commit()
     print("Добавление номера телефона к клиенту произошло")
 
 
 def change_client(cursor, client_id, first_name=None, last_name=None, email=None, phones=None):
     '''Изменение данных о клиенте'''
-    cursor.execute("""
-    UPDATE client SET first_name =%s,
-        last_name =%s,
-        email =%s,
-        phones =%s
-    WHERE client_id =%s;
-    """, (first_name, last_name, email, phones, client_id))
-    conn.commit()
-    print('Данные успешно изменены')
+    if first_name:
+        cursor.execute("""
+        UPDATE client SET first_name =%s
+        WHERE client_id =%s;
+        """, (first_name, client_id))
+        if last_name:
+            cursor.execute("""
+                UPDATE client SET last_name =%s
+                WHERE client_id =%s;
+                """, (last_name, client_id))
+            if email:
+                cursor.execute("""
+                    UPDATE client SET email =%s
+                    WHERE client_id =%s;
+                    """, (email, client_id))
+                if phones:
+                    cursor.execute("""
+                        UPDATE client SET phones =%s
+                        WHERE client_id =%s;
+                        """, (phones, client_id))
+                    print('Все данные успешно изменены!')
+                else:
+                    print('Колонки first_name, last_name, email изменены')
+            else:
+                print('Колонки first_name, last_name изменены')
+        else:
+            print('Колонка first_name изменена')
+    else:
+        print("Данные для изменения не введены!")
+
+
 
 def delete_phone(cursor, client_id, phone):
     '''Удаление телефона для существующего клиента'''
@@ -65,7 +86,6 @@ def delete_phone(cursor, client_id, phone):
         WHERE client_id = %s AND
         phone_number = %s;
     """, (client_id, phone))
-    conn.commit()
     print('Номер телефона успешно удален')
 
 def delete_clients(cursor, client_id):
@@ -74,33 +94,44 @@ def delete_clients(cursor, client_id):
         DELETE FROM client
         WHERE client_id = %s;
     """, (client_id,))
-    conn.commit()
     print('Удаление существующего клиента произошло')
 
 def find_client(cursor, first_name=None, last_name=None, email=None, phone=None):
     '''Поиск клиента по его данным'''
-    cursor.execute("""
-        SELECT * FROM client c
-        JOIN phone p ON c.client_id = p.client_id
-        WHERE c.first_name = %s AND
-            c.last_name = %s AND
-            c.email = %s OR
-            p.phone_number = %s;
-        """, (first_name,last_name, email, phone))
-    print(cur.fetchall())
+    if first_name and last_name and email:
+        cursor.execute("""
+            SELECT * FROM client c
+            JOIN phone p ON c.client_id = p.client_id
+            WHERE c.first_name = %s AND
+                c.last_name = %s AND
+                c.email = %s;
+            """, (first_name, last_name, email))
+        print(cur.fetchall())
+    else:
+        cursor.execute("""
+            SELECT * FROM client c
+            JOIN phone p ON c.client_id = p.client_id
+            WHERE c.first_name = %s AND
+                c.last_name = %s AND
+                p.phone_number = %s;
+            """, (first_name, last_name, phone))
+        print(cur.fetchall())
 
 
-with psycopg2.connect(database="personal_db", user='postgres', password='postgres') as conn:
-    with conn.cursor() as cur:
-        create_db(cur)
-        add_client(cur, 'Amir', 'Dautov', 'amr@mail.ru')
-        add_phone(cur, 1, '79833892211')
-        change_client(cur, 1, 'Alesha', 'Popkov')
-        delete_phone(cur, 1, '79833892211')
-        delete_clients(cur, 1)
-        find_client(cur, phone='79833892211')
 
 
-conn.close()
+if __name__ == "__main__":
+
+    with psycopg2.connect(database="personal_db", user='postgres', password='Luiza2704') as conn:
+        with conn.cursor() as cur:
+            create_db(cur)
+            add_client(cur, 'Amir', 'Dautov', 'amr@mail.ru')
+            add_phone(cur, 1, '79833892211')
+            change_client(cur, 1, 'Alesha', 'Popkov', 'amrt@yandex.ru', '7919400034')
+            delete_phone(cur, 1, '79833892211')
+            delete_clients(cur, 1)
+            find_client(cur, 'Alesha', 'Popkov', phone='79833892211')
+
+    conn.close()
 
 
