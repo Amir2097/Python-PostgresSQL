@@ -122,7 +122,7 @@ def find_client(cursor, first_name=None, last_name=None, email=None, phone=None)
 
 if __name__ == "__main__":
 
-    with psycopg2.connect(database="personal_db", user='postgres', password='Luiza2704') as conn:
+    with psycopg2.connect(database="personal_db", user='postgres', password='postgres') as conn:
         with conn.cursor() as cur:
             create_db(cur)
             add_client(cur, 'Amir', 'Dautov', 'amr@mail.ru')
